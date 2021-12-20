@@ -26,6 +26,7 @@
 #include "angles/angles.h"
 #include "builtin_interfaces/msg/duration.hpp"
 #include "builtin_interfaces/msg/time.hpp"
+#include "controller_interface/helpers.hpp"
 #include "hardware_interface/types/hardware_interface_return_values.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "joint_trajectory_controller/trajectory.hpp"
@@ -111,7 +112,8 @@ JointTrajectoryController::state_interface_configuration() const
   return conf;
 }
 
-controller_interface::return_type JointTrajectoryController::update()
+controller_interface::return_type JointTrajectoryController::update(
+  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
   if (get_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE)
   {
@@ -153,7 +155,7 @@ controller_interface::return_type JointTrajectoryController::update()
   // changed, but its value only?
   auto assign_interface_from_point =
     [&, joint_num](auto & joint_inteface, const std::vector<double> & trajectory_point_interface) {
-      for (auto index = 0ul; index < joint_num; ++index)
+      for (size_t index = 0; index < joint_num; ++index)
       {
         joint_inteface[index].get().set_value(trajectory_point_interface[index]);
       }
@@ -225,7 +227,7 @@ controller_interface::return_type JointTrajectoryController::update()
         }
       }
 
-      for (auto index = 0ul; index < joint_num; ++index)
+      for (size_t index = 0; index < joint_num; ++index)
       {
         compute_error_for_joint(state_error, index, state_current, state_desired);
 
@@ -331,7 +333,7 @@ void JointTrajectoryController::read_state_from_hardware(JointTrajectoryPoint & 
   const auto joint_num = joint_names_.size();
   auto assign_point_from_interface =
     [&, joint_num](std::vector<double> & trajectory_point_interface, const auto & joint_inteface) {
-      for (auto index = 0ul; index < joint_num; ++index)
+      for (size_t index = 0; index < joint_num; ++index)
       {
         trajectory_point_interface[index] = joint_inteface[index].get().get_value();
       }
@@ -370,7 +372,7 @@ bool JointTrajectoryController::read_state_from_command_interfaces(JointTrajecto
   const auto joint_num = joint_names_.size();
   auto assign_point_from_interface =
     [&, joint_num](std::vector<double> & trajectory_point_interface, const auto & joint_inteface) {
-      for (auto index = 0ul; index < joint_num; ++index)
+      for (size_t index = 0; index < joint_num; ++index)
       {
         trajectory_point_interface[index] = joint_inteface[index].get().get_value();
       }
@@ -619,16 +621,16 @@ CallbackReturn JointTrajectoryController::on_configure(const rclcpp_lifecycle::S
   }
 
   auto get_interface_list = [](const std::vector<std::string> & interface_types) {
-    std::stringstream ss_command_interfaces;
+    std::stringstream ss_interfaces;
     for (size_t index = 0; index < interface_types.size(); ++index)
     {
       if (index != 0)
       {
-        ss_command_interfaces << " ";
+        ss_interfaces << " ";
       }
-      ss_command_interfaces << interface_types[index];
+      ss_interfaces << interface_types[index];
     }
-    return ss_command_interfaces.str();
+    return ss_interfaces.str();
   };
 
   // Print output so users can be sure the interface setup is correct
@@ -729,28 +731,6 @@ CallbackReturn JointTrajectoryController::on_configure(const rclcpp_lifecycle::S
   return CallbackReturn::SUCCESS;
 }
 
-// Fill ordered_interfaces with references to the matching interfaces
-// in the same order as in joint_names
-template <typename T>
-bool get_ordered_interfaces(
-  std::vector<T> & unordered_interfaces, const std::vector<std::string> & joint_names,
-  const std::string & interface_type, std::vector<std::reference_wrapper<T>> & ordered_interfaces)
-{
-  for (const auto & joint_name : joint_names)
-  {
-    for (auto & interface : unordered_interfaces)
-    {
-      if (
-        (interface.get_name() == joint_name) && (interface.get_interface_name() == interface_type))
-      {
-        ordered_interfaces.emplace_back(std::ref(interface));
-      }
-    }
-  }
-
-  return joint_names.size() == ordered_interfaces.size();
-}
-
 CallbackReturn JointTrajectoryController::on_activate(const rclcpp_lifecycle::State &)
 {
   // order all joints in the storage
@@ -759,7 +739,7 @@ CallbackReturn JointTrajectoryController::on_activate(const rclcpp_lifecycle::St
     auto it =
       std::find(allowed_interface_types_.begin(), allowed_interface_types_.end(), interface);
     auto index = std::distance(allowed_interface_types_.begin(), it);
-    if (!get_ordered_interfaces(
+    if (!controller_interface::get_ordered_interfaces(
           command_interfaces_, joint_names_, interface, joint_command_interface_[index]))
     {
       RCLCPP_ERROR(
@@ -773,7 +753,7 @@ CallbackReturn JointTrajectoryController::on_activate(const rclcpp_lifecycle::St
     auto it =
       std::find(allowed_interface_types_.begin(), allowed_interface_types_.end(), interface);
     auto index = std::distance(allowed_interface_types_.begin(), it);
-    if (!get_ordered_interfaces(
+    if (!controller_interface::get_ordered_interfaces(
           state_interfaces_, joint_names_, interface, joint_state_interface_[index]))
     {
       RCLCPP_ERROR(
@@ -825,13 +805,13 @@ CallbackReturn JointTrajectoryController::on_activate(const rclcpp_lifecycle::St
 CallbackReturn JointTrajectoryController::on_deactivate(const rclcpp_lifecycle::State &)
 {
   // TODO(anyone): How to halt when using effort commands?
-  for (auto index = 0ul; index < joint_names_.size(); ++index)
+  for (size_t index = 0; index < joint_names_.size(); ++index)
   {
     joint_command_interface_[0][index].get().set_value(
       joint_command_interface_[0][index].get().get_value());
   }
 
-  for (auto index = 0ul; index < allowed_interface_types_.size(); ++index)
+  for (size_t index = 0; index < allowed_interface_types_.size(); ++index)
   {
     joint_command_interface_[index].clear();
     joint_state_interface_[index].clear();
@@ -1007,7 +987,7 @@ void JointTrajectoryController::fill_partial_goal(
 
   trajectory_msg->joint_names.reserve(joint_names_.size());
 
-  for (auto index = 0ul; index < joint_names_.size(); ++index)
+  for (size_t index = 0; index < joint_names_.size(); ++index)
   {
     {
       if (
@@ -1060,7 +1040,7 @@ void JointTrajectoryController::sort_to_local_joint_order(
     }
     std::vector<double> output;
     output.resize(mapping.size(), 0.0);
-    for (auto index = 0ul; index < mapping.size(); ++index)
+    for (size_t index = 0; index < mapping.size(); ++index)
     {
       auto map_index = mapping[index];
       output[map_index] = to_remap[index];
@@ -1068,7 +1048,7 @@ void JointTrajectoryController::sort_to_local_joint_order(
     return output;
   };
 
-  for (auto index = 0ul; index < trajectory_msg->points.size(); ++index)
+  for (size_t index = 0; index < trajectory_msg->points.size(); ++index)
   {
     trajectory_msg->points[index].positions =
       remap(trajectory_msg->points[index].positions, mapping_vector);
@@ -1143,7 +1123,7 @@ bool JointTrajectoryController::validate_trajectory_msg(
     }
   }
 
-  for (auto i = 0ul; i < trajectory.joint_names.size(); ++i)
+  for (size_t i = 0; i < trajectory.joint_names.size(); ++i)
   {
     const std::string & incoming_joint_name = trajectory.joint_names[i];
 
@@ -1158,7 +1138,7 @@ bool JointTrajectoryController::validate_trajectory_msg(
   }
 
   rclcpp::Duration previous_traj_time(0ms);
-  for (auto i = 0ul; i < trajectory.points.size(); ++i)
+  for (size_t i = 0; i < trajectory.points.size(); ++i)
   {
     if ((i > 0) && (rclcpp::Duration(trajectory.points[i].time_from_start) <= previous_traj_time))
     {
