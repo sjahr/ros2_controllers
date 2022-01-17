@@ -2,6 +2,17 @@
 Changelog for package diff_drive_controller
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.3.0 (2022-01-11)
+------------------
+* Add publish_rate option for the diff_drive_controller (`#278 <https://github.com/ros-controls/ros2_controllers/issues/278>`_)
+* Fix angular velocity direction of diff_drive_controller odometry (`#281 <https://github.com/ros-controls/ros2_controllers/issues/281>`_)
+* Contributors: Benjamin Hug, Paul Verhoeckx
+
+1.2.0 (2021-12-29)
+------------------
+* Add velocity feedback option for diff_drive_controller (`#260 <https://github.com/ros-controls/ros2_controllers/issues/260>`_)
+* Contributors: Patrick Roncagliolo
+
 1.1.0 (2021-10-25)
 ------------------
 * Use common test URDF from descriptions.hpp (`#258 <https://github.com/ros-controls/ros2_controllers/issues/258>`_)
