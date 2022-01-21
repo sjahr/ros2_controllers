@@ -13,6 +13,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(forward_command_controller REQUIRED)
+find_package(control_toolbox REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 
@@ -24,6 +25,7 @@ target_include_directories(effort_controllers PRIVATE include)
 ament_target_dependencies(effort_controllers
   forward_command_controller
   pluginlib
+  control_toolbox
   rclcpp
 )
 # Causes the visibility macros to use dllexport rather than dllimport,
