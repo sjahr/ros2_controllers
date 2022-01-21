@@ -805,11 +805,11 @@ CallbackReturn JointTrajectoryController::on_activate(const rclcpp_lifecycle::St
 CallbackReturn JointTrajectoryController::on_deactivate(const rclcpp_lifecycle::State &)
 {
   // TODO(anyone): How to halt when using effort commands?
-  for (size_t index = 0; index < joint_names_.size(); ++index)
-  {
-    joint_command_interface_[0][index].get().set_value(
-      joint_command_interface_[0][index].get().get_value());
-  }
+  //RCLCPP_ERROR(node_->get_logger(), "0");
+  //for (size_t index = 0; index < joint_names_.size(); ++index)
+  //{
+  //  joint_command_interface_[0][index].get().set_value(0.0);
+  //}
 
   for (size_t index = 0; index < allowed_interface_types_.size(); ++index)
   {
@@ -817,7 +817,6 @@ CallbackReturn JointTrajectoryController::on_deactivate(const rclcpp_lifecycle::
     joint_state_interface_[index].clear();
   }
   release_interfaces();
-
   subscriber_is_active_ = false;
 
   return CallbackReturn::SUCCESS;
